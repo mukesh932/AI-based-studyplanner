@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-900">AI Study Planner</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-700">Welcome, {{ username }}</span>
+                <a href="{{ url_for('logout') }}" class="text-blue-600 hover:underline">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column - Upload & Materials -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Upload Section -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Upload Study Materials</h2>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="file">
+                                File (PDF, DOCX, TXT) or URL
+                            </label>
+                            <input type="file" id="file" name="file" accept=".pdf,.docx,.txt" class="w-full">
+                            <input type="text" id="url" name="url" placeholder="Or enter URL" class="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md hidden">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="start_date">
+                                Start Date
+                            </label>
+                            <input type="date" id="start_date" name="start_date" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="end_date">
+                                End Date
+                            </label>
+                            <input type="date" id="end_date" name="end_date" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="daily_hours">
+                                Daily Study Hours
+                            </label>
+                            <input type="number" id="daily_hours" name="daily_hours" min="0.5" max="8" step="0.5" value="2" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                            Generate Study Plan
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Materials List -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Your Study Materials</h2>
+                    <div id="materialsList" class="space-y-3">
+                        {% for material in materials %}
+                        <div class="border border-gray-200 rounded-md p-3 hover:bg-gray-50 cursor-pointer material-item" data-id="{{ material.id }}">
+                            <h3 class="font-medium">{{ material.filename }}</h3>
+                            <p class="text-sm text-gray-600">Uploaded: {{ material.created_at[:10] }}</p>
+                        </div>
+                        {% else %}
+                        <p class="text-gray-500">No materials uploaded yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Study Plan & Interactions -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Study Plan Display -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Study Plan</h2>
+                    <div id="studyPlanContainer">
+                        <p class="text-gray-500">Select a material to view its study plan.</p>
+                    </div>
+                </div>
+
+                <!-- Question & Quiz Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Ask Question -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Ask a Question</h2>
+                        <form id="askForm">
+                            <input type="hidden" id="materialId" name="material_id">
+                            <div class="mb-4">
+                                <textarea id="question" name="question" rows="3" placeholder="Ask anything about the material..." class="w-full px-3 py-2 border border-gray-300 rounded-md" required></textarea>
+                            </div>
+                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                                Ask
+                            </button>
+                        </form>
+                        <div id="answerContainer" class="mt-4 p-3 bg-gray-50 rounded-md hidden">
+                            <h3 class="font-medium mb-2">Answer:</h3>
+                            <p id="answerText" class="text-gray-700"></p>
+                        </div>
+                    </div>
+
+                    <!-- Generate Quiz -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Generate Quiz</h2>
+                        <form id="quizForm">
+                            <input type="hidden" id="quizMaterialId" name="material_id">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Difficulty</label>
+                                <select name="difficulty" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    <option value="easy">Easy</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="hard">Hard</option>
+                                    <option value="pro">Pro</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                                Generate Quiz
+                            </button>
+                        </form>
+                        <div id="quizContainer" class="mt-4 hidden">
+                            <!-- Quiz will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Resources & Feedback -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Video Resources -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Video Resources</h2>
+                        <form id="videoForm">
+                            <div class="mb-4">
+                                <input type="text" id="topic" name="topic" placeholder="Enter a topic to find videos" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Language</label>
+                                <select name="language" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="hi">Hindi</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                                Find Videos
+                            </button>
+                        </form>
+                        <div id="videoResults" class="mt-4 space-y-3 hidden">
+                            <!-- Videos will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Feedback -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Progress Feedback</h2>
+                        <form id="feedbackForm">
+                            <input type="hidden" id="feedbackMaterialId" name="material_id">
+                            <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                                Get Feedback
+                            </button>
+                        </form>
+                        <div id="feedbackContainer" class="mt-4 hidden">
+                            <!-- Feedback will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
